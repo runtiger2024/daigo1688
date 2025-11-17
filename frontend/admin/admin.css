@@ -1,0 +1,238 @@
+/* --- 淘寶風格 - 管理儀表板 CSS --- */
+
+:root {
+  --taobao-orange: #ff5000;
+  --admin-bg: #f8f9fa;
+  --text-dark: #212529;
+  --text-light: #495057;
+  --border-gray: #dee2e6;
+  --header-bg: #343a40; /* 深色標頭 */
+}
+
+/* 基本樣式 */
+body {
+  font-family: "Helvetica Neue", Helvetica, Arial, "Microsoft Yahei",
+    "Hiragino Sans GB", "Heiti SC", "WenQuanYi Micro Hei", sans-serif;
+  line-height: 1.6;
+  background-color: var(--admin-bg);
+  color: var(--text-dark);
+  margin: 0;
+  padding: 0;
+}
+
+header {
+  background-color: var(--header-bg); /* 改用深灰色標頭 */
+  color: white;
+  padding: 20px;
+  border-bottom: 4px solid var(--taobao-orange); /* 底部用橙色線條點綴 */
+}
+header h1 {
+  margin: 0;
+  color: white; /* 標題改為白色 */
+}
+header a {
+  color: #e9ecef;
+}
+header a:hover {
+  color: white;
+}
+
+.auth-box {
+  margin: 10px 0;
+  background-color: var(--text-light); /* 驗證區塊使用較淺的灰色 */
+  padding: 10px;
+  border-radius: 5px;
+}
+.auth-box label {
+  margin-right: 10px;
+}
+.auth-box input[type="password"] {
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #ced4da;
+}
+.auth-box button {
+  padding: 5px 10px;
+  background-color: var(--taobao-orange); /* 刷新按鈕改為淘寶橙 */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+.auth-box button:hover {
+  opacity: 0.85;
+}
+
+/* 儀表板佈局 */
+.dashboard-layout {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 20px;
+  gap: 20px;
+  align-items: flex-start;
+}
+.dashboard-section {
+  background-color: #ffffff;
+  border: 1px solid var(--border-gray);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+  flex: 1;
+}
+
+/* 訂單區塊 */
+#orders-section {
+  min-width: 60%;
+  overflow-x: auto;
+}
+
+/* 商品區塊 */
+#products-section {
+  min-width: 300px;
+  max-width: 40%;
+}
+
+h2,
+h3 {
+  margin-top: 0;
+  color: var(--text-dark); /* 標題改為深色 */
+  border-bottom: 2px solid var(--taobao-orange); /* 標題底線使用淘寶橙 */
+  padding-bottom: 5px;
+  font-weight: 500;
+}
+
+/* 表單樣式 */
+#product-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+.form-group label {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group input[type="password"],
+.form-group textarea {
+  width: 95%;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+/* 輸入框選中時的淘寶橙光暈 */
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--taobao-orange);
+  box-shadow: 0 0 5px rgba(255, 80, 0, 0.5);
+}
+
+.form-buttons button {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 10px;
+  font-weight: bold;
+  transition: opacity 0.3s ease;
+}
+#submit-product-btn {
+  background-color: var(--taobao-orange); /* 主要按鈕使用淘寶橙 */
+  color: white;
+}
+#submit-product-btn:hover {
+  opacity: 0.85;
+}
+#cancel-edit-btn {
+  background-color: #6c757d;
+  color: white;
+}
+#cancel-edit-btn:hover {
+  opacity: 0.85;
+}
+
+/* 表格樣式 */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+table th,
+table td {
+  border: 1px solid var(--border-gray);
+  padding: 12px;
+  text-align: left;
+  vertical-align: top;
+}
+table th {
+  background-color: #f1f3f5;
+  font-weight: bold;
+}
+table tbody tr:nth-child(odd) {
+  background-color: #f8f9fa;
+}
+table img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+/* 表格中的狀態和按鈕 */
+.status-pending {
+  color: var(--taobao-orange);
+  font-weight: bold;
+}
+.status-processed {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.btn {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-right: 5px;
+  transition: opacity 0.3s ease;
+}
+.btn:hover {
+  opacity: 0.8;
+}
+
+.btn-edit {
+  background-color: #ffc107;
+  color: #212529;
+} /* 編輯(黃) - 保留 */
+.btn-delete {
+  background-color: #dc3545;
+  color: white;
+} /* 刪除(紅) - 保留 */
+.btn-update {
+  background-color: #007bff;
+  color: white;
+} /* 更新(藍) - 保留 */
+.btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* --- 管理後台頁尾 --- */
+.admin-footer {
+  text-align: center;
+  padding: 20px;
+  margin-top: 30px;
+  color: #6c757d; /* 輔助性文字顏色 */
+  font-size: 0.9rem;
+  border-top: 1px solid var(--border-gray);
+}

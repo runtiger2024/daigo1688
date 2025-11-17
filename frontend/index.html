@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>代採購平台</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="header-placeholder"></div>
+
+    <main>
+      <h1>我們的商品</h1>
+      <div id="product-list" class="product-grid">
+        <p>正在載入商品...</p>
+      </div>
+
+      <hr />
+
+      <h1>提交訂單</h1>
+      <div id="order-form">
+        <p>這只是一個測試表單，我們稍後會把它和購物車整合。</p>
+        <label for="paopao-id">跑跑虎會員編號:</label>
+        <input type="text" id="paopao-id" placeholder="請輸入您的跑跑虎 ID" />
+
+        <label for="customer-email">您的 Email (用於接收訂單確認):</label>
+        <input
+          type="email"
+          id="customer-email"
+          placeholder="customer@example.com"
+        />
+
+        <button id="test-order-button">測試提交訂單</button>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-content">
+        <p>
+          <strong>跑得快國際貿易有限公司</strong><br />
+          Runtiger International Trading Co., Ltd.
+        </p>
+        <p>
+          統編：42924265<br />
+          電子郵件：<a href="mailto:rruntiger@gmail.com">rruntiger@gmail.com</a>
+        </p>
+        <p>LINE官方客服：@gogo5808</p>
+        <p class="copyright">
+          <a href="./admin/index.html" class="admin-link" title="管理員登入">
+            &copy; 2025 Runtiger International. All Rights Reserved.
+          </a>
+        </p>
+      </div>
+    </footer>
+    <a
+      href="https://lin.ee/pb428dF"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="line-float-button"
+    >
+      <svg
+        class="line-icon"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path
+          d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+        ></path>
+      </svg>
+      <span>LINE 客服</span>
+    </a>
+    <script src="app.js"></script>
+  </body>
+</html>
