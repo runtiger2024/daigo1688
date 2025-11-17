@@ -1,4 +1,4 @@
-const API_URL = "https://daigo-backend-service.onrender.com/api";
+import { API_URL } from "./config.js"; // <--- 【優化】從 config 導入
 let availableOperators = []; // (--- ←←← 新增這一行)
 
 // -------------------------------------------------

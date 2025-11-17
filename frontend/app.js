@@ -1,3 +1,5 @@
+import { API_URL } from "./config.js"; // <--- 【優化】從 config 導入
+
 /**
  * 異步載入共用組件 (例如頁首、頁尾)
  */
@@ -23,7 +25,7 @@ async function loadComponent(componentPath, placeholderId) {
 // -------------------------------------------------
 // 全域變數
 // -------------------------------------------------
-const API_URL = "https://daigo-backend-service.onrender.com/api";
+// const API_URL = "https://daigo-backend-service.onrender.com/api"; // <--- 【優化】已移除
 /**
  * 購物車。
  * 結構:
@@ -41,6 +43,18 @@ document.addEventListener("DOMContentLoaded", () => {
   // 載入共用頁首
   loadComponent("./_header.html", "header-placeholder");
 
+  // --- 【優化】從 localStorage 載入購物車 ---
+  const savedCart = localStorage.getItem("shoppingCart");
+  if (savedCart) {
+    try {
+      shoppingCart = JSON.parse(savedCart);
+    } catch (e) {
+      console.error("解析購物車失敗:", e);
+      shoppingCart = {};
+    }
+  }
+  // -------------------------------------
+
   // 載入商品
   fetchProducts();
 
@@ -49,6 +63,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // 設定結帳表單
   setupCheckoutForm();
+
+  // --- 【優化】載入後更新一次圖示 ---
+  updateCartCount();
 });
 
 // -------------------------------------------------
@@ -182,6 +199,14 @@ function addToCart(id, name, price) {
 
   // 更新購物車圖示上的數字
   updateCartCount();
+
+  // --- 【優化】保存購物車到 localStorage ---
+  try {
+    localStorage.setItem("shoppingCart", JSON.stringify(shoppingCart));
+  } catch (e) {
+    console.error("保存購物車失敗:", e);
+  }
+  // -------------------------------------
 }
 
 /**
@@ -221,6 +246,15 @@ function renderCart() {
 
   // 更新購物車圖示上的數字
   updateCartCount();
+
+  // --- 【優化】保存購物車到 localStorage ---
+  // (每次渲染 = 每次變動，所以都在此保存)
+  try {
+    localStorage.setItem("shoppingCart", JSON.stringify(shoppingCart));
+  } catch (e) {
+    console.error("保存購物車失敗:", e);
+  }
+  // -------------------------------------
 }
 
 /**
@@ -296,9 +330,13 @@ function setupCheckoutForm() {
       // 6. 清空購物車
       shoppingCart = {};
 
+      // --- 【優化】清空 localStorage ---
+      localStorage.removeItem("shoppingCart");
+      // ---------------------------------
+
       // 7. 關閉 Modal 並重置 UI
       document.getElementById("cart-modal").style.display = "none";
-      renderCart();
+      renderCart(); // (這會呼叫並保存空的 shoppingCart)
       checkoutForm.reset();
     } catch (error) {
       console.error("提交訂單時出錯:", error);

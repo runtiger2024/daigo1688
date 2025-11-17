@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import db from "./db.js"; // 載入我們的資料庫連線
 import { comparePassword, generateToken, hashPassword } from "./auth.js"; // 載入認證工具 (已加入 hashPassword)
 import { authenticateToken, isAdmin, isOperator } from "./middleware.js"; // 載入 API 守衛
+import Joi from "joi"; // <--- 【優化】導入 Joi
 
 // 讀取 .env
 dotenv.config();
@@ -169,15 +170,35 @@ app.post("/api/orders", async (req, res) => {
     let totalCost_cny = 0;
     const processedItems = [];
 
+    // --- 【優化】N+1 查詢改進 ---
+
+    // 1. 從購物車中收集所有商品 ID
+    const productIds = items.map((item) => item.id);
+
+    // 2. 一次性從資料庫獲取所有商品資訊
+    //    使用 ANY($1::int[]) 來查詢陣列中的所有 ID
+    const productsResult = await client.query(
+      `SELECT id, name, price_twd, cost_cny 
+         FROM products 
+         WHERE id = ANY($1::int[]) AND is_archived = FALSE`,
+      [productIds]
+    );
+
+    // 3. 將查詢結果轉換為一個 Map (物件)，方便快速查找
+    const productsMap = productsResult.rows.reduce((acc, product) => {
+      acc[product.id] = product;
+      return acc;
+    }, {});
+
+    // --- 優化結束 ---
+
+    // 4. 再次迴圈，但這次是從 Map 中讀取資料，不再查詢資料庫
     for (const item of items) {
-      const productResult = await client.query(
-        "SELECT name, price_twd, cost_cny FROM products WHERE id = $1 AND is_archived = FALSE",
-        [item.id]
-      );
-      if (productResult.rows.length === 0) {
-        throw new Error(`找不到 ID 為 ${item.id} 的商品`);
+      const product = productsMap[item.id]; // 直接從 Map 獲取
+
+      if (!product) {
+        throw new Error(`找不到 ID 為 ${item.id} 的商品或商品已下架`);
       }
-      const product = productResult.rows[0];
       const quantity = parseInt(item.quantity, 10);
 
       totalAmount_twd += product.price_twd * quantity;
@@ -191,6 +212,7 @@ app.post("/api/orders", async (req, res) => {
         snapshot_cost_cny: product.cost_cny,
       });
     }
+    // --- 【優化】邏輯結束 ---
 
     const orderResult = await client.query(
       `INSERT INTO orders (paopao_id, customer_email, total_amount_twd, total_cost_cny, status)
@@ -379,11 +401,30 @@ app.post(
   authenticateToken,
   isAdmin,
   async (req, res) => {
+    // --- 【優化】1. 定義 Joi 驗證規則 ---
+    const productSchema = Joi.object({
+      name: Joi.string().min(1).max(255).required(),
+      description: Joi.string().allow(null, ""), // 允許空字串或 null
+      price_twd: Joi.number().integer().min(0).required(),
+      cost_cny: Joi.number().min(0).required(),
+      image_url: Joi.string().uri().allow(null, ""), // .uri() 驗證是否為 URL
+    });
+
+    // --- 【優化】2. 執行驗證 ---
+    const { error, value } = productSchema.validate(req.body);
+
+    if (error) {
+      // 驗證失敗，回傳 400 錯誤
+      return res
+        .status(400)
+        .json({ message: `輸入資料錯誤: ${error.details[0].message}` });
+    }
+
+    // --- 【優化】3. (原有的 try...catch) ---
     try {
-      const { name, description, price_twd, cost_cny, image_url } = req.body;
-      if (!name || !price_twd || !cost_cny) {
-        return res.status(400).json({ message: "缺少名稱、售價或成本" });
-      }
+      // ⚠️ 注意：我們使用 'value' (已清理和類型轉換的資料) 而非 'req.body'
+      const { name, description, price_twd, cost_cny, image_rrl } = value;
+
       const result = await db.query(
         `INSERT INTO products (name, description, price_twd, cost_cny, image_url)
              VALUES ($1, $2, $3, $4, $5)
@@ -433,6 +474,8 @@ app.put(
     try {
       const { id } = req.params;
       const { name, description, price_twd, cost_cny, image_url } = req.body;
+
+      // (TODO: 這裡也應該加入 Joi 驗證)
 
       const result = await db.query(
         `UPDATE products SET 
@@ -512,6 +555,8 @@ app.post("/api/admin/users", authenticateToken, isAdmin, async (req, res) => {
       return res.status(400).json({ message: "無效的角色" });
     }
 
+    // (TODO: 這裡也應該加入 Joi 驗證)
+
     // 1. 加密密碼
     const hashedPassword = await hashPassword(password);
 
@@ -519,13 +564,18 @@ app.post("/api/admin/users", authenticateToken, isAdmin, async (req, res) => {
     const result = await db.query(
       `INSERT INTO users (username, password_hash, role, status)
              VALUES ($1, $2, $3, 'active')
+             ON CONFLICT (username) DO NOTHING
              RETURNING id, username, role, status`,
       [username, hashedPassword, role]
     );
 
+    if (result.rows.length === 0) {
+      return res.status(409).json({ message: "帳號已存在" });
+    }
+
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    // 捕捉 "username" 唯一的錯誤
+    // 捕捉 "username" 唯一的錯誤 (雖然 ON CONFLICT 已經處理了)
     if (err.code === "23505") {
       return res.status(409).json({ message: "帳號已存在" });
     }
