@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import db from "./db.js"; // 載入我們的資料庫連線
 import { comparePassword, generateToken, hashPassword } from "./auth.js"; // 載入認證工具 (已加入 hashPassword)
 import { authenticateToken, isAdmin, isOperator } from "./middleware.js"; // 載入 API 守衛
-import Joi from "joi/lib/index.js"; // <--- 【優化】導入 Joi
+import Joi from "joi"; // <--- 這是正確的導入方式
 
 // 讀取 .env
 dotenv.config();
