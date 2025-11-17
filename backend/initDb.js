@@ -100,11 +100,11 @@ async function setupDatabase() {
         `);
     console.log('Tables "order_items" 已建立。');
 
-    // -- 7. (【已修改】) 建立 Warehouses 表格 (倉庫) --
+    // -- 7. 建立 Warehouses 表格 (倉庫) --
     await client.query(`
             CREATE TABLE IF NOT EXISTS warehouses (
                 id SERIAL PRIMARY KEY,
-                name VARCHAR(100) NOT NULL UNIQUE, -- <--- 已加上 UNIQUE
+                name VARCHAR(100) NOT NULL UNIQUE, 
                 receiver VARCHAR(100) NOT NULL,
                 phone VARCHAR(50) NOT NULL,
                 address TEXT NOT NULL,
@@ -114,15 +114,14 @@ async function setupDatabase() {
         `);
     console.log('Tables "warehouses" 已建立 (並確認 UNIQUE 約束)。');
 
-    // -- 7.5 (【全新】) 為已經存在的資料表補上 UNIQUE 約束 --
-    // 這能修復您當前的錯誤
+    // -- 7.5 為已經存在的資料表補上 UNIQUE 約束 --
     await client.query(`
             DO $$
             BEGIN
                 IF NOT EXISTS (
                     SELECT 1 FROM pg_constraint 
                     WHERE conrelid = 'warehouses'::regclass 
-                    AND conname = 'warehouses_name_key' -- (PostgreSQL 預設的 UNIQUE 名稱)
+                    AND conname = 'warehouses_name_key'
                 ) THEN
                     ALTER TABLE warehouses ADD CONSTRAINT warehouses_name_key UNIQUE (name);
                     RAISE NOTICE '已為 "warehouses" 表的 "name" 欄位加上 UNIQUE 約束。';
@@ -131,8 +130,7 @@ async function setupDatabase() {
         `);
     console.log("Warehouse UNIQUE 約束已修復。");
 
-    // -- 8. (【不變】) 插入預設的倉庫資料 --
-    // 現在 ON CONFLICT (name) 會正常運作
+    // -- 8. 插入預設的倉庫資料 --
     await client.query(`
             INSERT INTO warehouses (name, receiver, phone, address)
             VALUES 
@@ -142,6 +140,18 @@ async function setupDatabase() {
             ON CONFLICT (name) DO NOTHING;
         `);
     console.log("預設倉庫資料已插入。");
+
+    // -- 9. (【全新】) 建立 Customers 表格 (客戶會員) --
+    await client.query(`
+            CREATE TABLE IF NOT EXISTS customers (
+                id SERIAL PRIMARY KEY,
+                paopao_id VARCHAR(100) UNIQUE NOT NULL, -- 用跑跑虎 ID 當帳號
+                password_hash TEXT NOT NULL, -- 儲存手機號碼的雜湊
+                email VARCHAR(255) UNIQUE NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+        `);
+    console.log('Tables "customers" 已建立。');
 
     await client.query("COMMIT"); // <--- 提交事務
     console.log("✅ 資料庫初始化成功！");

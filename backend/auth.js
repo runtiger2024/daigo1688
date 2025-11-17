@@ -36,19 +36,34 @@ export async function comparePassword(password, hash) {
 
 /**
  * 產生一個 JWT Token
- * @param {object} user - 用戶資料 (例如 { id, username, role })
+ * (【已修改】) 可同時處理 admin/operator 和 customer
+ * @param {object} user - 用戶資料 (例如 { id, username, role } 或 { id, paopao_id, role })
  * @returns {string} - JWT Token
  */
 export function generateToken(user) {
   // 我們只將安全的、非敏感的資訊存入 Token
-  const payload = {
-    id: user.id,
-    username: user.username,
-    role: user.role,
-  };
+  let payload;
 
-  // Token 效期設為 8 小時
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "8h" });
+  if (user.role === "admin" || user.role === "operator") {
+    payload = {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+    };
+  } else {
+    // 假設是 'customer'
+    payload = {
+      id: user.id,
+      paopao_id: user.paopao_id, // 客戶使用 paopao_id
+      email: user.email,
+      role: user.role || "customer",
+    };
+  }
+
+  // Token 效期設為 8 小時 (客戶登入可以設更長，例如 '30d')
+  const expiresIn = user.role === "customer" ? "30d" : "8h";
+
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: expiresIn });
 }
 
 /**

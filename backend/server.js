@@ -16,16 +16,13 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json()); // 解析傳入的 JSON
 
-// --- 靜態資料 (【移除】) ---
-// (硬編碼的倉庫資料已被移除，它們現在在資料庫中)
-
 // --- 幫助函數 (SendGrid) (不變) ---
 async function sendOrderEmail(order) {
   console.log(`(模擬) 正在為訂單 ${order.id} 發送郵件...`);
 }
 
 // ===================================================================
-// API 路由 (Auth) - 全新功能
+// API 路由 (Auth) - (管理員/操作員)
 // ===================================================================
 
 /**
@@ -77,7 +74,109 @@ app.post("/api/auth/login", async (req, res) => {
  * 獲取當前登入者資訊 (驗證 Token)
  */
 app.get("/api/auth/me", authenticateToken, (req, res) => {
+  // 這個 API 現在可以同時驗證管理員和客戶的 Token
   res.json(req.user);
+});
+
+// ===================================================================
+// (【全新】) API 路由 (Auth) - (客戶)
+// ===================================================================
+
+/**
+ * (【全新】) 客戶註冊
+ */
+app.post("/api/auth/customer-register", async (req, res) => {
+  try {
+    const { paopaoId, phoneNumber, email } = req.body;
+
+    // 1. 驗證 (簡易)
+    if (!paopaoId || !phoneNumber || !email) {
+      return res
+        .status(400)
+        .json({ message: "跑跑虎 ID、手機號碼和 Email 均為必填" });
+    }
+    // 簡易手機驗證 (09開頭，共10碼)
+    if (!/^09\d{8}$/.test(phoneNumber)) {
+      return res
+        .status(400)
+        .json({ message: "手機號碼格式錯誤 (應為 09XXXXXXXX)" });
+    }
+
+    // 2. 加密密碼 (手機號碼)
+    const hashedPassword = await hashPassword(phoneNumber);
+
+    // 3. 存入資料庫
+    const result = await db.query(
+      `INSERT INTO customers (paopao_id, password_hash, email)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (paopao_id) DO NOTHING
+       RETURNING id, paopao_id, email`,
+      [paopaoId, hashedPassword, email]
+    );
+
+    if (result.rows.length === 0) {
+      // 可能是 paopao_id 重複，或是 email 重複 (如果 email 也設了 UNIQUE)
+      return res.status(409).json({ message: "此跑跑虎 ID 或 Email 已被註冊" });
+    }
+
+    res.status(201).json({ message: "註冊成功！", customer: result.rows[0] });
+  } catch (err) {
+    // 捕捉 UNIQUE 衝突 (e.g., email)
+    if (err.code === "23505") {
+      return res.status(409).json({ message: "此跑跑虎 ID 或 Email 已被註冊" });
+    }
+    console.error("Customer Register Error:", err.stack);
+    res.status(500).json({ message: "伺服器錯誤" });
+  }
+});
+
+/**
+ * (【全新】) 客戶登入
+ */
+app.post("/api/auth/customer-login", async (req, res) => {
+  try {
+    const { paopaoId, phoneNumber } = req.body;
+    if (!paopaoId || !phoneNumber) {
+      return res.status(400).json({ message: "請輸入跑跑虎 ID 和手機號碼" });
+    }
+
+    const customerResult = await db.query(
+      "SELECT * FROM customers WHERE paopao_id = $1",
+      [paopaoId]
+    );
+
+    if (customerResult.rows.length === 0) {
+      return res.status(404).json({ message: "帳號不存在 (跑跑虎 ID 錯誤)" });
+    }
+    const customer = customerResult.rows[0];
+
+    const isMatch = await comparePassword(phoneNumber, customer.password_hash);
+    if (!isMatch) {
+      return res.status(401).json({ message: "密碼錯誤 (手機號碼錯誤)" });
+    }
+
+    // (【重要】) 客戶的 Token payload
+    const customerPayload = {
+      id: customer.id,
+      paopao_id: customer.paopao_id,
+      email: customer.email,
+      role: "customer", // 標記為客戶
+    };
+
+    const token = generateToken(customerPayload); // 使用我們更新過的 generateToken
+
+    res.json({
+      token,
+      customer: {
+        id: customer.id,
+        paopao_id: customer.paopao_id,
+        email: customer.email,
+      },
+    });
+  } catch (err) {
+    console.error("Customer Login Error:", err.stack);
+    res.status(500).json({ message: "伺服器錯誤" });
+  }
 });
 
 // ===================================================================
