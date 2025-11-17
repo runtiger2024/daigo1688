@@ -1,10 +1,9 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// backend/prisma/schema.prisma (最終 PostgreSQL 配置)
 
 // 1. 設定資料庫連線
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "postgresql" // 【還原】使用 PostgreSQL
+  url      = env("DATABASE_URL") 
 }
 
 // 2. 設定 Prisma Client 產生器
