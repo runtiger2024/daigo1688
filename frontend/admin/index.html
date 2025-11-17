@@ -9,30 +9,31 @@
   <body>
     <header>
       <h1>代購平台 - 管理儀表板</h1>
+
       <div class="auth-box">
-        <label for="admin-key">管理員密鑰:</label>
-        <input
-          type="password"
-          id="admin-key"
-          placeholder="輸入 ADMIN_SECRET_KEY"
-        />
-        <button id="refresh-data">重新載入資料</button>
+        <span id="user-info">正在載入...</span>
+        <button id="logout-button" class="btn btn-delete">登出</button>
+        <a href="../index.html" class="btn btn-link">返回前台</a>
       </div>
-      <p>
-        <a href="../index.html">返回客戶前台</a>
-      </p>
     </header>
 
     <main class="dashboard-layout">
+      <section class="dashboard-section" id="stats-section">
+        <h2>績效一覽表</h2>
+        <div id="stats-content">
+          <p>正在載入績效...</p>
+        </div>
+      </section>
+
       <section class="dashboard-section" id="orders-section">
-        <h2>訂單管理</h2>
+        <h2>訂單管理 (待處理/採購中)</h2>
+        <button id="refresh-data" class="btn btn-primary">刷新訂單</button>
         <table id="orders-table">
           <thead>
             <tr>
               <th>訂單ID</th>
               <th>建立時間</th>
               <th>跑跑虎ID</th>
-              <th>Email</th>
               <th>總金額</th>
               <th>狀態</th>
               <th>操作</th>
@@ -54,8 +55,12 @@
             <input type="text" id="product-name" required />
           </div>
           <div class="form-group">
-            <label for="product-price">台幣價格:</label>
+            <label for="product-price">台幣售價 (TWD):</label>
             <input type="number" id="product-price" required />
+          </div>
+          <div class="form-group">
+            <label for="product-cost">人民幣成本 (CNY):</label>
+            <input type="number" step="0.01" id="product-cost" required />
           </div>
           <div class="form-group">
             <label for="product-description">商品描述:</label>
@@ -86,11 +91,53 @@
               <th>ID</th>
               <th>圖片</th>
               <th>名稱</th>
-              <th>價格 (TWD)</th>
+              <th>售價 (TWD)</th>
+              <th>成本 (CNY)</th>
               <th>操作</th>
             </tr>
           </thead>
           <tbody id="products-tbody"></tbody>
+        </table>
+      </section>
+      <section class="dashboard-section" id="users-section">
+        <h2>人員管理 (僅限 Admin)</h2>
+
+        <form id="create-user-form">
+          <h3 id="form-title">建立新用戶</h3>
+          <div class="form-group">
+            <label for="user-username">帳號:</label>
+            <input type="text" id="user-username" required />
+          </div>
+          <div class="form-group">
+            <label for="user-password">密碼:</label>
+            <input type="text" id="user-password" required />
+          </div>
+          <div class="form-group">
+            <label for="user-role">角色:</label>
+            <select id="user-role" required>
+              <option value="operator" selected>操作人員 (Operator)</option>
+              <option value="admin">管理員 (Admin)</option>
+            </select>
+          </div>
+          <div class="form-buttons">
+            <button type="submit" id="submit-user-btn">建立用戶</button>
+          </div>
+        </form>
+
+        <hr />
+
+        <h3>現有用戶列表</h3>
+        <table id="users-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>帳號</th>
+              <th>角色</th>
+              <th>狀態</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody"></tbody>
         </table>
       </section>
     </main>

@@ -1,7 +1,5 @@
 /**
  * 異步載入共用組件 (例如頁首、頁尾)
- * @param {string} componentPath - 組件的 HTML 檔案路徑 (例如 '_header.html')
- * @param {string} placeholderId - 要插入內容的佔位符 ID (例如 'header-placeholder')
  */
 async function loadComponent(componentPath, placeholderId) {
   const placeholder = document.getElementById(placeholderId);
@@ -9,7 +7,6 @@ async function loadComponent(componentPath, placeholderId) {
     console.warn(`警告: 找不到 ID 為 "${placeholderId}" 的佔位符。`);
     return;
   }
-
   try {
     const response = await fetch(componentPath);
     if (!response.ok) {
@@ -23,49 +20,76 @@ async function loadComponent(componentPath, placeholderId) {
   }
 }
 
-// 這是我們後端 API 的基礎 URL
-// 我們從後端伺服器 (http://localhost:5000) 獲取資料
+// -------------------------------------------------
+// 全域變數
+// -------------------------------------------------
 const API_URL = "http://localhost:5000/api";
+/**
+ * 購物車。
+ * 結構:
+ * {
+ * "p1": { "name": "商品A", "price": 850, "quantity": 1 },
+ * "p2": { "name": "商品B", "price": 1200, "quantity": 2 }
+ * }
+ */
+let shoppingCart = {};
 
-// 當 DOM 內容完全載入後執行
+// -------------------------------------------------
+// DOM 載入後執行
+// -------------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
-  // !!
-  // !! 第一步：非同步載入共用頁首
-  // !!
+  // 載入共用頁首
   loadComponent("./_header.html", "header-placeholder");
 
-  // 接著執行原本的功能
+  // 載入商品
   fetchProducts();
-  setupOrderButton();
+
+  // 設定購物車 Modal
+  setupCartModal();
+
+  // 設定結帳表單
+  setupCheckoutForm();
 });
 
-// 1. 從後端獲取商品並顯示在頁面上
+// -------------------------------------------------
+// 1. 載入商品
+// -------------------------------------------------
 async function fetchProducts() {
   const productListDiv = document.getElementById("product-list");
-
   try {
     const response = await fetch(`${API_URL}/products`);
-    if (!response.ok) {
-      throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
-    }
+    if (!response.ok) throw new Error("載入商品失敗");
     const products = await response.json();
 
-    // 清空「正在載入...」
-    productListDiv.innerHTML = "";
+    productListDiv.innerHTML = ""; // 清空「正在載入...」
 
-    // 為每個商品創建一個卡片
     products.forEach((product) => {
       const card = document.createElement("div");
-      card.className = "product-card"; // 套用 CSS 樣式
+      card.className = "product-card";
 
       card.innerHTML = `
-                <img src="${product.imageUrl}" alt="${product.name}">
+                <img src="${product.image_url}" alt="${product.name}">
                 <h3>${product.name}</h3>
-                <p>${product.description}</p>
-                <div class="price">TWD ${product.price}</div>
-                <button>加入購物車</button> 
+                <p>${product.description || ""}</p>
+                <div class="price">TWD ${product.price_twd}</div>
+                <button class="add-to-cart-btn" 
+                        data-id="${product.id}" 
+                        data-name="${product.name}" 
+                        data-price="${product.price_twd}">
+                    加入購物車
+                </button> 
             `;
       productListDiv.appendChild(card);
+    });
+
+    // 為所有「加入購物車」按鈕綁定事件
+    document.querySelectorAll(".add-to-cart-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        const id = button.dataset.id;
+        const name = button.dataset.name;
+        const price = parseInt(button.dataset.price, 10);
+        addToCart(id, name, price);
+      });
     });
   } catch (error) {
     console.error("獲取商品失敗:", error);
@@ -74,33 +98,184 @@ async function fetchProducts() {
   }
 }
 
-// 2. 設定「測試提交訂單」按鈕的功能
-function setupOrderButton() {
-  const testButton = document.getElementById("test-order-button");
-  if (!testButton) return;
+// -------------------------------------------------
+// 2. 購物車 Modal (彈窗) 邏輯
+// -------------------------------------------------
+function setupCartModal() {
+  const modal = document.getElementById("cart-modal");
+  const openBtn = document.getElementById("cart-button");
+  const closeBtn = document.getElementById("close-modal");
 
-  testButton.addEventListener("click", async () => {
-    const paopaoId = document.getElementById("paopao-id").value;
-    const customerEmail = document.getElementById("customer-email").value;
+  // 打開 Modal
+  openBtn.addEventListener("click", () => {
+    renderCart(); // 打開時
+    modal.style.display = "block";
+  });
 
-    if (!paopaoId) {
-      alert("請輸入跑跑虎會員編號！");
+  // 關閉 Modal
+  closeBtn.addEventListener("click", () => {
+    modal.style.display = "none";
+  });
+
+  // 點擊 Modal 外部 (灰色遮罩) 關閉
+  window.addEventListener("click", (event) => {
+    if (event.target == modal) {
+      modal.style.display = "none";
+    }
+  });
+
+  // 綁定購物車內部的事件 (修改數量 / 刪除)
+  document
+    .getElementById("cart-items-list")
+    .addEventListener("click", (event) => {
+      const target = event.target;
+      const id = target.dataset.id;
+
+      if (target.classList.contains("remove-item")) {
+        // 點擊 "刪除"
+        delete shoppingCart[id];
+        renderCart();
+      }
+    });
+
+  document
+    .getElementById("cart-items-list")
+    .addEventListener("change", (event) => {
+      const target = event.target;
+      const id = target.dataset.id;
+
+      if (target.classList.contains("cart-item-quantity")) {
+        // "修改數量"
+        const newQuantity = parseInt(target.value, 10);
+        if (newQuantity <= 0) {
+          delete shoppingCart[id];
+        } else {
+          shoppingCart[id].quantity = newQuantity;
+        }
+        renderCart();
+      }
+    });
+}
+
+// -------------------------------------------------
+// 3. 購物車核心邏輯 (新增/渲染)
+// -------------------------------------------------
+
+/**
+ * 加入商品到購物車
+ */
+function addToCart(id, name, price) {
+  if (shoppingCart[id]) {
+    // 如果已存在，數量+1
+    shoppingCart[id].quantity++;
+  } else {
+    // 如果是新商品
+    shoppingCart[id] = {
+      name: name,
+      price: price,
+      quantity: 1,
+    };
+  }
+
+  // 顯示提示
+  alert(`${name} 已加入購物車！`);
+
+  // 更新購物車圖示上的數字
+  updateCartCount();
+}
+
+/**
+ * 渲染購物車 Modal 內的 HTML
+ */
+function renderCart() {
+  const cartItemsList = document.getElementById("cart-items-list");
+  let totalAmount = 0;
+
+  if (Object.keys(shoppingCart).length === 0) {
+    cartItemsList.innerHTML = "<p>您的購物車是空的。</p>";
+  } else {
+    cartItemsList.innerHTML = ""; // 清空
+
+    for (const id in shoppingCart) {
+      const item = shoppingCart[id];
+      const itemTotal = item.price * item.quantity;
+      totalAmount += itemTotal;
+
+      cartItemsList.innerHTML += `
+                <div class="cart-item">
+                    <div class="cart-item-info">
+                        <p>${item.name}</p>
+                        <span>TWD ${item.price}</span>
+                    </div>
+                    <div class="cart-item-actions">
+                        <input type="number" class="cart-item-quantity" data-id="${id}" value="${item.quantity}" min="1">
+                        <button class="remove-item" data-id="${id}">&times;</button>
+                    </div>
+                </div>
+            `;
+    }
+  }
+
+  // 更新總金額
+  document.getElementById("cart-total-amount").textContent = totalAmount;
+
+  // 更新購物車圖示上的數字
+  updateCartCount();
+}
+
+/**
+ * 更新懸浮圖示的計數
+ */
+function updateCartCount() {
+  let count = 0;
+  for (const id in shoppingCart) {
+    count += shoppingCart[id].quantity;
+  }
+  document.getElementById("cart-count").textContent = count;
+}
+
+// -------------------------------------------------
+// 4. 結帳邏輯
+// -------------------------------------------------
+function setupCheckoutForm() {
+  const checkoutForm = document.getElementById("checkout-form");
+  const checkoutButton = document.getElementById("checkout-button");
+
+  checkoutForm.addEventListener("submit", async (e) => {
+    e.preventDefault(); // 防止表單跳轉
+
+    // 1. 獲取表單資料
+    const paopaoId = document.getElementById("checkout-paopao-id").value;
+    const customerEmail = document.getElementById(
+      "checkout-customer-email"
+    ).value;
+
+    // 2. 轉換購物車格式
+    // 後端 API 需要的格式: [{ "id": "p1", "quantity": 2 }, ...]
+    const items = Object.keys(shoppingCart).map((id) => {
+      return {
+        id: id,
+        quantity: shoppingCart[id].quantity,
+      };
+    });
+
+    if (items.length === 0) {
+      alert("您的購物車是空的！");
       return;
     }
-
-    // 這是我們模擬的購物車商品 (p1, 數量 2)
-    const mockOrderItems = [
-      { id: "p1", quantity: 2 },
-      { id: "p2", quantity: 1 },
-    ];
 
     const orderData = {
       paopaoId: paopaoId,
       customerEmail: customerEmail,
-      items: mockOrderItems,
+      items: items,
     };
 
+    // 3. UI 處理
+    checkoutButton.disabled = true;
+    checkoutButton.textContent = "訂單提交中...";
+
     try {
+      // 4. 發送 API
       const response = await fetch(`${API_URL}/orders`, {
         method: "POST",
         headers: {
@@ -115,16 +290,23 @@ function setupOrderButton() {
         throw new Error(result.message || "訂單提交失敗");
       }
 
-      alert(
-        `訂單提交成功！\n訂單 ID: ${result.order.id}\n總金額: ${result.order.totalAmount}`
-      );
+      // 5. 成功
+      alert("訂單提交成功！\n感謝您的訂購，我們將盡快處理。");
 
-      // 你現在可以去檢查你的後端終端機 (第一個終단機)
-      // 你會看到「收到新訂單」的日誌
-      // 並且 (如果你設定了 SendGrid) 你和客戶的信箱會收到郵件
+      // 6. 清空購物車
+      shoppingCart = {};
+
+      // 7. 關閉 Modal 並重置 UI
+      document.getElementById("cart-modal").style.display = "none";
+      renderCart();
+      checkoutForm.reset();
     } catch (error) {
       console.error("提交訂單時出錯:", error);
       alert(`錯誤: ${error.message}`);
+    } finally {
+      // 8. 重置按鈕
+      checkoutButton.disabled = false;
+      checkoutButton.textContent = "確認送出訂單";
     }
   });
 }

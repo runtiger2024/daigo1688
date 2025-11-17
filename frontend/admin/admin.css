@@ -236,3 +236,78 @@ table img {
   font-size: 0.9rem;
   border-top: 1px solid var(--border-gray);
 }
+/* --- 登入頁面樣式 (Login Page) --- */
+body.login-body {
+  background-color: var(--admin-bg);
+}
+
+.login-container {
+  max-width: 450px;
+  margin: 80px auto;
+  padding: 30px;
+  background-color: #ffffff;
+  border: 1px solid var(--border-gray);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.login-container h2 {
+  text-align: center;
+  color: var(--taobao-orange);
+  border-bottom: none;
+  margin-top: 0;
+}
+.login-container p {
+  text-align: center;
+  color: var(--text-light);
+  margin-bottom: 25px;
+}
+
+#login-form .form-group {
+  margin-bottom: 20px;
+}
+
+#login-form .form-buttons button {
+  width: 100%;
+  padding: 12px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  background-color: var(--taobao-orange);
+}
+
+.error-message {
+  color: #dc3545; /* Bootstrap danger color */
+  font-weight: bold;
+  text-align: center;
+  min-height: 1.5em; /* 佔位，防止跳動 */
+}
+/* --- 人員管理區塊 --- */
+#users-section {
+  min-width: 100%; /* 讓它佔滿一整行 */
+}
+
+#create-user-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: flex-end;
+}
+#create-user-form h3 {
+  width: 100%;
+  margin-bottom: 0;
+}
+#create-user-form .form-group {
+  flex: 1; /* 讓輸入框彈性生長 */
+  min-width: 200px;
+}
+#create-user-form .form-buttons {
+  padding-bottom: 8px; /* 對齊輸入框 */
+}
+#create-user-form select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: white;
+}
