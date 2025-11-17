@@ -145,6 +145,12 @@ a:hover {
   box-shadow: 0 0 5px rgba(255, 80, 0, 0.3);
 }
 
+/* (【修改】) 讓 readOnly 的輸入框有不同樣式 */
+#order-form input[readonly] {
+  background-color: #eee;
+  color: #777;
+}
+
 #order-form button {
   background-color: var(--taobao-orange); /* 按鈕使用淘寶橙 */
   color: white;
@@ -409,4 +415,19 @@ a:hover {
   font-weight: bold;
   margin-top: 20px;
   color: var(--taobao-orange);
+}
+
+/* (【全新】) 客戶登出按鈕 (小型) */
+.btn-small-delete {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.btn-small-delete:hover {
+  background-color: #dc3545;
 }

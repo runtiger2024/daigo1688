@@ -23,17 +23,51 @@ async function loadComponent(componentPath, placeholderId) {
 }
 
 // -------------------------------------------------
+// (【全新】) 客戶端 Auth 幫助函式
+// -------------------------------------------------
+function getCustomer() {
+  try {
+    return JSON.parse(localStorage.getItem("customerUser"));
+  } catch (e) {
+    return null;
+  }
+}
+function customerLogout() {
+  localStorage.removeItem("customerToken");
+  localStorage.removeItem("customerUser");
+  alert("您已成功登出。");
+  window.location.reload();
+}
+
+/**
+ * (【全新】) 檢查客戶登入狀態並更新 UI
+ */
+function setupCustomerAuth() {
+  const customer = getCustomer();
+  const infoDiv = document.getElementById("customer-info");
+  const footerLinks = document.getElementById("footer-auth-links");
+
+  if (customer && infoDiv) {
+    // 狀態：已登入
+    infoDiv.innerHTML = `
+      <span style="margin-right: 10px;">歡迎, ${customer.paopao_id}</span>
+      <button id="customer-logout-btn" class="btn-small-delete">登出</button>
+    `;
+    document
+      .getElementById("customer-logout-btn")
+      .addEventListener("click", customerLogout);
+
+    if (footerLinks) footerLinks.style.display = "none"; // 隱藏 "會員登入/註冊"
+  } else {
+    // 狀態：未登入
+    if (infoDiv) infoDiv.innerHTML = "";
+    if (footerLinks) footerLinks.style.display = "block"; // 顯示 "會員登入/註冊"
+  }
+}
+
+// -------------------------------------------------
 // 全域變數
 // -------------------------------------------------
-// const API_URL = "https://daigo-backend-service.onrender.com/api"; // <--- 【優化】已移除
-/**
- * 購物車。
- * 結構:
- * {
- * "p1": { "name": "商品A", "price": 850, "quantity": 1 },
- * "p2": { "name": "商品B", "price": 1200, "quantity": 2 }
- * }
- */
 let shoppingCart = {};
 
 // -------------------------------------------------
@@ -42,6 +76,9 @@ let shoppingCart = {};
 document.addEventListener("DOMContentLoaded", () => {
   // 載入共用頁首
   loadComponent("./_header.html", "header-placeholder");
+
+  // (【全新】) 檢查客戶登入狀態
+  setupCustomerAuth();
 
   // --- 【優化】從 localStorage 載入購物車 ---
   const savedCart = localStorage.getItem("shoppingCart");
@@ -61,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // 設定購物車 Modal
   setupCartModal();
 
-  // 設定結帳表單
+  // 設定結帳表單 (【修改】)
   setupCheckoutForm();
 
   // --- 【優化】載入後更新一次圖示 ---
@@ -84,8 +121,11 @@ async function fetchProducts() {
       const card = document.createElement("div");
       card.className = "product-card";
 
+      // (【修正】) 檢查 product.image_url 是否為 null
+      const imageUrl = product.image_url || ""; // 如果是 null，改用空字串
+
       card.innerHTML = `
-                <img src="${product.image_url}" alt="${product.name}">
+                <img src="${imageUrl}" alt="${product.name}">
                 <h3>${product.name}</h3>
                 <p>${product.description || ""}</p>
                 <div class="price">TWD ${product.price_twd}</div>
@@ -125,6 +165,8 @@ function setupCartModal() {
 
   // 打開 Modal
   openBtn.addEventListener("click", () => {
+    // (【修改】) 打開 modal 時，再次檢查是否需要自動填入
+    autofillCheckoutForm();
     renderCart(); // 打開時
     modal.style.display = "block";
   });
@@ -271,9 +313,29 @@ function updateCartCount() {
 // -------------------------------------------------
 // 4. 結帳邏輯
 // -------------------------------------------------
+
+/**
+ * (【全新】) 幫助函式：自動填入表單
+ */
+function autofillCheckoutForm() {
+  const customer = getCustomer();
+  const paopaoIdInput = document.getElementById("checkout-paopao-id");
+  const emailInput = document.getElementById("checkout-customer-email");
+
+  if (customer && paopaoIdInput && emailInput) {
+    paopaoIdInput.value = customer.paopao_id;
+    paopaoIdInput.readOnly = true;
+    emailInput.value = customer.email;
+    emailInput.readOnly = true;
+  }
+}
+
 function setupCheckoutForm() {
   const checkoutForm = document.getElementById("checkout-form");
   const checkoutButton = document.getElementById("checkout-button");
+
+  // (【修改】) 載入時先執行一次自動填入
+  autofillCheckoutForm();
 
   checkoutForm.addEventListener("submit", async (e) => {
     e.preventDefault(); // 防止表單跳轉
@@ -338,6 +400,9 @@ function setupCheckoutForm() {
       document.getElementById("cart-modal").style.display = "none";
       renderCart(); // (這會呼叫並保存空的 shoppingCart)
       checkoutForm.reset();
+
+      // (【修改】) 重設表單後，再次自動填入
+      autofillCheckoutForm();
     } catch (error) {
       console.error("提交訂單時出錯:", error);
       alert(`錯誤: ${error.message}`);
