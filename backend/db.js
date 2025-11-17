@@ -16,7 +16,8 @@ const pool = new Pool({
   },
 });
 
-// 導出一個 'query' 函數，讓其他檔案可以使用
+// 導出 'query' 函數，讓其他檔案可以使用
 export default {
   query: (text, params) => pool.query(text, params),
+  connect: () => pool.connect(), // <--- 【修改】新增這一行
 };

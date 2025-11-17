@@ -163,7 +163,7 @@ app.post("/api/orders", async (req, res) => {
     return res.status(400).json({ message: "缺少跑跑虎會員編號或購物車商品" });
   }
 
-  const client = await db.query("BEGIN_CLIENT");
+  const client = await db.connect(); // <--- 【修改】使用我們新的 connect 函數
 
   try {
     let totalAmount_twd = 0;
