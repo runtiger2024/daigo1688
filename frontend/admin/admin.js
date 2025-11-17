@@ -1,5 +1,5 @@
-import { API_URL } from "../config.js"; // <--- 【已修正】從 ../ config 導入
-let availableOperators = []; // (--- ←←← 新增這一行)
+import { API_URL } from "../config.js";
+let availableOperators = [];
 
 // -------------------------------------------------
 // 1. 核心：認證與守衛
@@ -62,30 +62,30 @@ function logout() {
 }
 
 // -------------------------------------------------
-// 2. DOM 元素
+// 2. DOM 元素 (【修正】只宣告，不賦值)
 // -------------------------------------------------
-const refreshButton = document.getElementById("refresh-data");
-const logoutButton = document.getElementById("logout-button");
-const userInfoSpan = document.getElementById("user-info");
+let refreshButton;
+let logoutButton;
+let userInfoSpan;
 // 訂單
-const ordersTbody = document.getElementById("orders-tbody");
+let ordersTbody;
 // 商品
-const productsTbody = document.getElementById("products-tbody");
-const productForm = document.getElementById("product-form");
-const formTitle = document.getElementById("form-title");
-const productIdInput = document.getElementById("product-id");
-const productNameInput = document.getElementById("product-name");
-const productPriceInput = document.getElementById("product-price");
-const productCostInput = document.getElementById("product-cost"); // 新增
-const productDescInput = document.getElementById("product-description");
-const productImgUrlInput = document.getElementById("product-image-url");
-const cancelEditBtn = document.getElementById("cancel-edit-btn");
+let productsTbody;
+let productForm;
+let formTitle;
+let productIdInput;
+let productNameInput;
+let productPriceInput;
+let productCostInput;
+let productDescInput;
+let productImgUrlInput;
+let cancelEditBtn;
 // 績效
-const statsContent = document.getElementById("stats-content");
+let statsContent;
 // 人員管理
-const userSection = document.getElementById("users-section"); // (重構) 雖然被隱藏，但 JS 仍需保留
-const createUserForm = document.getElementById("create-user-form");
-const usersTbody = document.getElementById("users-tbody");
+let userSection;
+let createUserForm;
+let usersTbody;
 
 // -------------------------------------------------
 // 3. 載入資料 (API 呼叫)
@@ -165,7 +165,7 @@ async function loadOrders(headers) {
 
     const orders = await response.json();
     renderOrders(orders);
-  } catch (error)
+  } catch (error) {
     alert(`載入訂單失敗: ${error.message}`);
     ordersTbody.innerHTML =
       '<tr><td colspan="6" style="color: red;">載入訂單失敗。</td></tr>';
@@ -266,7 +266,9 @@ function renderOrders(orders) {
                     }>取消訂單</option>
                 </select>
 
-                <select class="order-operator-select" data-id="${order.id}" data-role="admin">
+                <select class="order-operator-select" data-id="${
+                  order.id
+                }" data-role="admin">
                     <option value="">-- 指派給 --</option>
                     ${operatorOptions}
                 </select>
@@ -354,18 +356,38 @@ function renderUsers(users) {
 
 // (重構) 頁面載入時
 document.addEventListener("DOMContentLoaded", () => {
+  // 0. (【修正】) 在這裡才抓取 DOM 元素
+  refreshButton = document.getElementById("refresh-data");
+  logoutButton = document.getElementById("logout-button");
+  userInfoSpan = document.getElementById("user-info");
+  ordersTbody = document.getElementById("orders-tbody");
+  productsTbody = document.getElementById("products-tbody");
+  productForm = document.getElementById("product-form");
+  formTitle = document.getElementById("form-title");
+  productIdInput = document.getElementById("product-id");
+  productNameInput = document.getElementById("product-name");
+  productPriceInput = document.getElementById("product-price");
+  productCostInput = document.getElementById("product-cost");
+  productDescInput = document.getElementById("product-description");
+  productImgUrlInput = document.getElementById("product-image-url");
+  cancelEditBtn = document.getElementById("cancel-edit-btn");
+  statsContent = document.getElementById("stats-content");
+  userSection = document.getElementById("users-section");
+  createUserForm = document.getElementById("create-user-form");
+  usersTbody = document.getElementById("users-tbody");
+
   // 1. 執行守衛
   if (!checkAuth()) {
     return;
   }
 
   // 2. (全新) 立即套用權限，隱藏不該看的按鈕和區塊
-  applyRolePermissions(); 
+  applyRolePermissions();
 
   // 3. 載入所有資料 (loadUsers 會因為權限而自動跳過)
   loadAllData();
 
-  // 4. 綁定按鈕
+  // 4. 綁定按鈕 (【修正】現在 logoutButton 不會是 null)
   logoutButton.addEventListener("click", logout);
   refreshButton.addEventListener("click", () => {
     loadOrders(getAuthHeaders());
@@ -375,7 +397,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // 5. 啟動導覽列 (它會自動跳過被隱藏的頁籤)
   setupNavigation();
 });
-
 
 // 處理商品表單提交 (新增 vs. 編輯)
 productForm.addEventListener("submit", async (e) => {
@@ -474,11 +495,12 @@ productsTbody.addEventListener("click", async (e) => {
       productImgUrlInput.value = product.image_url;
 
       cancelEditBtn.style.display = "inline-block";
-      
-      // (重構) 自動切換到商品頁籤並滾動
-      document.querySelector('.nav-link[data-target="products-section"]').click();
-      window.scrollTo({ top: 0, behavior: "smooth" });
 
+      // (重構) 自動切換到商品頁籤並滾動
+      document
+        .querySelector('.nav-link[data-target="products-section"]')
+        .click();
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       alert(`錯誤: ${error.message}`);
     }
@@ -635,7 +657,7 @@ function applyRolePermissions() {
 
   // 尋找所有標記為 "admin" 才能看的元素
   const restrictedElements = document.querySelectorAll('[data-role="admin"]');
-  
+
   restrictedElements.forEach((el) => {
     el.style.display = "none";
   });
@@ -649,10 +671,10 @@ function setupNavigation() {
   const sections = document.querySelectorAll(".dashboard-section");
 
   // 1. 尋找預設頁籤 (從 data-default="true" 或第一個可見的頁籤)
-  const defaultLink = 
-    document.querySelector('.nav-link[data-default="true"]') || 
+  const defaultLink =
+    document.querySelector('.nav-link[data-default="true"]') ||
     document.querySelector('.nav-link:not([style*="display: none"])');
-  
+
   const defaultTargetId = defaultLink ? defaultLink.dataset.target : null;
 
   // 2. 根據 URL hash 顯示正確頁面
@@ -665,7 +687,7 @@ function setupNavigation() {
     if (!targetSection || targetSection.style.display === "none") {
       targetId = defaultTargetId; // 不存在或被隱藏，則退回預設
     }
-    
+
     updateActiveTabs(targetId);
   }
 
@@ -693,7 +715,7 @@ function setupNavigation() {
 
   // 5. 監聽瀏覽器 "上一頁/下一頁"
   window.addEventListener("popstate", showTabFromHash);
-  
+
   // 6. 初始載入
   showTabFromHash();
 }
