@@ -166,6 +166,7 @@ app.post("/api/orders", async (req, res) => {
   const client = await db.connect(); // <--- 【修改】使用我們新的 connect 函數
 
   try {
+    await client.query("BEGIN"); // <--- ✅ 請在這裡加上這一行
     let totalAmount_twd = 0;
     let totalCost_cny = 0;
     const processedItems = [];
