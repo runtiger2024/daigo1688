@@ -2,7 +2,7 @@
  * 這是 /admin/login.html 專用的 JS
  */
 
-import { API_URL } from "./config.js"; // <--- 【優化】從 config 導入
+import { API_URL } from "../config.js"; // <--- 【優化】從 config 導入
 
 document.addEventListener("DOMContentLoaded", () => {
   // 檢查是否已登入，如果
