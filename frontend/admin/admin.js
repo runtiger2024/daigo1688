@@ -303,9 +303,12 @@ function renderProducts(products) {
   }
   products.forEach((product) => {
     const tr = document.createElement("tr");
+    // (【修正】) 檢查 product.image_url 是否為 null
+    const imageUrl = product.image_url || ""; // 如果是 null，改用空字串
+
     tr.innerHTML = `
             <td>${product.id}</td>
-            <td><img src="${product.image_url}" alt="${product.name}"></td>
+            <td><img src="${imageUrl}" alt="${product.name}"></td>
             <td>${product.name}</td>
             <td>${product.price_twd}</td>
             <td>N/A</td> <td>
@@ -396,239 +399,243 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // 5. 啟動導覽列 (它會自動跳過被隱藏的頁籤)
   setupNavigation();
-});
 
-// 處理商品表單提交 (新增 vs. 編輯)
-productForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const headers = getAuthHeaders();
-  if (!headers) return;
-
-  const id = productIdInput.value;
-  const productData = {
-    name: productNameInput.value,
-    price_twd: parseInt(productPriceInput.value, 10),
-    cost_cny: parseFloat(productCostInput.value),
-    description: productDescInput.value,
-    image_url: productImgUrlInput.value,
-  };
-
-  try {
-    let url = `${API_URL}/admin/products`;
-    let method = "POST";
-    if (id) {
-      url = `${API_URL}/admin/products/${id}`;
-      method = "PUT";
-    }
-
-    const response = await fetch(url, {
-      method,
-      headers,
-      body: JSON.stringify(productData),
-    });
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.message || "操作失敗");
-    }
-
-    alert(id ? "商品已更新！" : "商品已新增！");
-    resetProductForm();
-    await loadProducts(); // 重新載入商品列表
-  } catch (error) {
-    alert(`錯誤: ${error.message}`);
-  }
-});
-
-// 取消編輯按鈕
-cancelEditBtn.addEventListener("click", resetProductForm);
-
-// 商品列表的按鈕事件 (編輯 / 封存)
-productsTbody.addEventListener("click", async (e) => {
-  const target = e.target;
-  const id = target.dataset.id;
-  if (!id) return;
-
-  // 點擊 "封存" (DELETE)
-  if (target.classList.contains("btn-delete")) {
-    if (!confirm(`確定要 "封存" ID 為 ${id} 的商品嗎？(不會真的刪除)`)) return;
-
-    try {
-      const response = await fetch(`${API_URL}/admin/products/${id}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("封存失敗");
-      alert("商品已封存！");
-      await loadProducts();
-    } catch (error) {
-      alert(`錯誤: ${error.message}`);
-    }
-  }
-
-  // 點擊 "編輯"
-  if (target.classList.contains("btn-edit")) {
-    const headers = getAuthHeaders();
-    if (!headers) {
-      alert("Token 遺失，請重新登入");
-      return;
-    }
-
-    try {
-      // ✅ 修正：呼叫新的 Admin API 來獲取完整資料 (含成本)
-      const response = await fetch(`${API_URL}/admin/products/${id}`, {
-        headers,
-      });
-
-      if (!response.ok) {
-        throw new Error("無法獲取商品資料");
-      }
-
-      const product = await response.json();
-
-      // 將完整資料填入表單
-      formTitle.textContent = `編輯商品 (ID: ${id})`;
-      productIdInput.value = product.id;
-      productNameInput.value = product.name;
-      productPriceInput.value = product.price_twd;
-      productCostInput.value = product.cost_cny; // ✅ 成功填充成本
-      productDescInput.value = product.description;
-      productImgUrlInput.value = product.image_url;
-
-      cancelEditBtn.style.display = "inline-block";
-
-      // (重構) 自動切換到商品頁籤並滾動
-      document
-        .querySelector('.nav-link[data-target="products-section"]')
-        .click();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch (error) {
-      alert(`錯誤: ${error.message}`);
-    }
-  }
-});
-
-// (重構) 訂單表格的 "所有" 下拉選單變更
-ordersTbody.addEventListener("change", async (e) => {
-  const target = e.target;
-  const id = target.dataset.id;
-  const headers = getAuthHeaders();
-  if (!id || !headers) return;
-
-  // ------------------------------------
-  // 邏輯 1：如果變更的是 "狀態"
-  // ------------------------------------
-  if (target.classList.contains("order-status-select")) {
-    const status = target.value;
-
-    if (!confirm(`確定要將訂單 ${id} 的狀態改為 "${status}" 嗎？`)) {
-      loadOrders(headers); // 重置下拉選單
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/operator/orders/${id}`, {
-        method: "PUT",
-        headers: headers,
-        body: JSON.stringify({ status: status }), // 使用 Operator API
-      });
-
-      if (!response.ok) throw new Error("更新狀態失敗");
-
-      alert("訂單狀態已更新！");
-      await loadOrders(headers); // 重新載入訂單
-    } catch (error) {
-      alert(`錯誤: ${error.message}`);
-    }
-  }
-
-  // ------------------------------------
-  // 邏輯 2：如果變更的是 "指派" (全新)
-  // ------------------------------------
-  if (target.classList.contains("order-operator-select")) {
-    const operatorId = target.value; // 這會是 " " (空字串) 或 "2", "3"
-
-    if (
-      !confirm(`確定要將訂單 ${id} 指派給操作員 ID: ${operatorId || "無"} 嗎？`)
-    ) {
-      loadOrders(headers); // 重置下拉選單
-      return;
-    }
-
-    try {
-      // **注意：** 這裡呼叫的是 "Admin" API
-      const response = await fetch(`${API_URL}/admin/orders/${id}`, {
-        method: "PUT",
-        headers: headers,
-        body: JSON.stringify({ operator_id: operatorId || null }), // 傳送 ID 或 null (取消指派)
-      });
-
-      if (!response.ok) throw new Error("指派失敗");
-
-      alert("訂單指派已更新！");
-      await loadOrders(headers); // 重新載入訂單 (為了更新 "指派給: xxx")
-    } catch (error) {
-      alert(`錯誤: ${error.message}`);
-    }
-  }
-});
-
-// (全新) 監聽建立用戶表單
-createUserForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const headers = getAuthHeaders();
-  if (!headers) return;
-
-  const username = document.getElementById("user-username").value;
-  const password = document.getElementById("user-password").value;
-  const role = document.getElementById("user-role").value;
-
-  try {
-    const response = await fetch(`${API_URL}/admin/users`, {
-      method: "POST",
-      headers: headers,
-      body: JSON.stringify({ username, password, role }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || "建立失敗");
-    }
-
-    alert("用戶建立成功！");
-    createUserForm.reset();
-    await loadUsers(headers); // 重新載入列表
-  } catch (error) {
-    alert(`錯誤: ${error.message}`);
-  }
-});
-
-// (全新) 監聽用戶列表的按鈕事件 (停權/啟用)
-usersTbody.addEventListener("click", async (e) => {
-  if (e.target.classList.contains("btn-toggle-status")) {
-    const id = e.target.dataset.id;
-    const newStatus = e.target.dataset.newStatus;
-
-    if (!confirm(`確定要將用戶 ${id} 的狀態改為 "${newStatus}" 嗎？`)) return;
-
+  // 6. (【修正】) 將所有其他的 addEventListener 移到這裡
+  productForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
     const headers = getAuthHeaders();
     if (!headers) return;
 
+    const id = productIdInput.value;
+    const productData = {
+      name: productNameInput.value,
+      price_twd: parseInt(productPriceInput.value, 10),
+      cost_cny: parseFloat(productCostInput.value),
+      description: productDescInput.value,
+      image_url: productImgUrlInput.value,
+    };
+
     try {
-      const response = await fetch(`${API_URL}/admin/users/${id}/status`, {
-        method: "PUT",
-        headers: headers,
-        body: JSON.stringify({ status: newStatus }),
+      let url = `${API_URL}/admin/products`;
+      let method = "POST";
+      if (id) {
+        url = `${API_URL}/admin/products/${id}`;
+        method = "PUT";
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: JSON.stringify(productData),
       });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || "操作失敗");
+      }
 
-      if (!response.ok) throw new Error("更新失敗");
-
-      alert("用戶狀態已更新！");
-      await loadUsers(headers); // 重新載入
+      alert(id ? "商品已更新！" : "商品已新增！");
+      resetProductForm();
+      await loadProducts(); // 重新載入商品列表
     } catch (error) {
       alert(`錯誤: ${error.message}`);
     }
-  }
+  });
+
+  // 取消編輯按鈕
+  cancelEditBtn.addEventListener("click", resetProductForm);
+
+  // 商品列表的按鈕事件 (編輯 / 封存)
+  productsTbody.addEventListener("click", async (e) => {
+    const target = e.target;
+    const id = target.dataset.id;
+    if (!id) return;
+
+    // 點擊 "封存" (DELETE)
+    if (target.classList.contains("btn-delete")) {
+      if (!confirm(`確定要 "封存" ID 為 ${id} 的商品嗎？(不會真的刪除)`))
+        return;
+
+      try {
+        const response = await fetch(`${API_URL}/admin/products/${id}`, {
+          method: "DELETE",
+          headers: getAuthHeaders(),
+        });
+        if (!response.ok) throw new Error("封存失敗");
+        alert("商品已封存！");
+        await loadProducts();
+      } catch (error) {
+        alert(`錯誤: ${error.message}`);
+      }
+    }
+
+    // 點擊 "編輯"
+    if (target.classList.contains("btn-edit")) {
+      const headers = getAuthHeaders();
+      if (!headers) {
+        alert("Token 遺失，請重新登入");
+        return;
+      }
+
+      try {
+        // ✅ 修正：呼叫新的 Admin API 來獲取完整資料 (含成本)
+        const response = await fetch(`${API_URL}/admin/products/${id}`, {
+          headers,
+        });
+
+        if (!response.ok) {
+          throw new Error("無法獲取商品資料");
+        }
+
+        const product = await response.json();
+
+        // 將完整資料填入表單
+        formTitle.textContent = `編輯商品 (ID: ${id})`;
+        productIdInput.value = product.id;
+        productNameInput.value = product.name;
+        productPriceInput.value = product.price_twd;
+        productCostInput.value = product.cost_cny; // ✅ 成功填充成本
+        productDescInput.value = product.description;
+        productImgUrlInput.value = product.image_url;
+
+        cancelEditBtn.style.display = "inline-block";
+
+        // (重構) 自動切換到商品頁籤並滾動
+        document
+          .querySelector('.nav-link[data-target="products-section"]')
+          .click();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (error) {
+        alert(`錯誤: ${error.message}`);
+      }
+    }
+  });
+
+  // (重構) 訂單表格的 "所有" 下拉選單變更
+  ordersTbody.addEventListener("change", async (e) => {
+    const target = e.target;
+    const id = target.dataset.id;
+    const headers = getAuthHeaders();
+    if (!id || !headers) return;
+
+    // ------------------------------------
+    // 邏輯 1：如果變更的是 "狀態"
+    // ------------------------------------
+    if (target.classList.contains("order-status-select")) {
+      const status = target.value;
+
+      if (!confirm(`確定要將訂單 ${id} 的狀態改為 "${status}" 嗎？`)) {
+        loadOrders(headers); // 重置下拉選單
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/operator/orders/${id}`, {
+          method: "PUT",
+          headers: headers,
+          body: JSON.stringify({ status: status }), // 使用 Operator API
+        });
+
+        if (!response.ok) throw new Error("更新狀態失敗");
+
+        alert("訂單狀態已更新！");
+        await loadOrders(headers); // 重新載入訂單
+      } catch (error) {
+        alert(`錯誤: ${error.message}`);
+      }
+    }
+
+    // ------------------------------------
+    // 邏輯 2：如果變更的是 "指派" (全新)
+    // ------------------------------------
+    if (target.classList.contains("order-operator-select")) {
+      const operatorId = target.value; // 這會是 " " (空字串) 或 "2", "3"
+
+      if (
+        !confirm(
+          `確定要將訂單 ${id} 指派給操作員 ID: ${operatorId || "無"} 嗎？`
+        )
+      ) {
+        loadOrders(headers); // 重置下拉選單
+        return;
+      }
+
+      try {
+        // **注意：** 這裡呼叫的是 "Admin" API
+        const response = await fetch(`${API_URL}/admin/orders/${id}`, {
+          method: "PUT",
+          headers: headers,
+          body: JSON.stringify({ operator_id: operatorId || null }), // 傳送 ID 或 null (取消指派)
+        });
+
+        if (!response.ok) throw new Error("指派失敗");
+
+        alert("訂單指派已更新！");
+        await loadOrders(headers); // 重新載入訂單 (為了更新 "指派給: xxx")
+      } catch (error) {
+        alert(`錯誤: ${error.message}`);
+      }
+    }
+  });
+
+  // (全新) 監聽建立用戶表單
+  createUserForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const headers = getAuthHeaders();
+    if (!headers) return;
+
+    const username = document.getElementById("user-username").value;
+    const password = document.getElementById("user-password").value;
+    const role = document.getElementById("user-role").value;
+
+    try {
+      const response = await fetch(`${API_URL}/admin/users`, {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({ username, password, role }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "建立失敗");
+      }
+
+      alert("用戶建立成功！");
+      createUserForm.reset();
+      await loadUsers(headers); // 重新載入列表
+    } catch (error) {
+      alert(`錯誤: ${error.message}`);
+    }
+  });
+
+  // (全新) 監聽用戶列表的按鈕事件 (停權/啟用)
+  usersTbody.addEventListener("click", async (e) => {
+    if (e.target.classList.contains("btn-toggle-status")) {
+      const id = e.target.dataset.id;
+      const newStatus = e.target.dataset.newStatus;
+
+      if (!confirm(`確定要將用戶 ${id} 的狀態改為 "${newStatus}" 嗎？`)) return;
+
+      const headers = getAuthHeaders();
+      if (!headers) return;
+
+      try {
+        const response = await fetch(`${API_URL}/admin/users/${id}/status`, {
+          method: "PUT",
+          headers: headers,
+          body: JSON.stringify({ status: newStatus }),
+        });
+
+        if (!response.ok) throw new Error("更新失敗");
+
+        alert("用戶狀態已更新！");
+        await loadUsers(headers); // 重新載入
+      } catch (error) {
+        alert(`錯誤: ${error.message}`);
+      }
+    }
+  });
 });
+// (【修正】) 移除所有在 DOMContentLoaded 之外的 addEventListener
 
 // -------------------------------------------------
 // 6. 幫助 (Helper) 函式
