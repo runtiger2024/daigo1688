@@ -16,31 +16,8 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json()); // 解析傳入的 JSON
 
-// --- 靜態資料 (不變) ---
-const warehouses = [
-  {
-    id: "xz",
-    name: "厦门漳州仓",
-    receiver: `跑跑虎轉(會員編號)`,
-    phone: "13682536948",
-    address:
-      "中国福建省漳州市龙海区東園鎮倉里路普洛斯物流園A02庫1楼一分區1號門跑跑虎(會員編號)",
-  },
-  {
-    id: "dg",
-    name: "东莞仓",
-    receiver: `跑跑虎轉(會員編號)`,
-    phone: "13682536948",
-    address: "中国广东省东莞市洪梅镇振華路688號2號樓跑跑虎(會員編號)",
-  },
-  {
-    id: "yw",
-    name: "义乌仓",
-    receiver: `跑跑虎轉(會員編號)`,
-    phone: "13682536948",
-    address: "中国浙江省金华市义乌市江东街道东新路19号1号楼跑跑虎(會員編號)",
-  },
-];
+// --- 靜態資料 (【移除】) ---
+// (硬編碼的倉庫資料已被移除，它們現在在資料庫中)
 
 // --- 幫助函數 (SendGrid) (不變) ---
 async function sendOrderEmail(order) {
@@ -111,8 +88,17 @@ app.get("/", (req, res) => {
   res.send("代採購平台後端 API 運行中... (已連接資料庫)");
 });
 
-app.get("/api/warehouses", (req, res) => {
-  res.json(warehouses);
+// (【重構】) 從資料庫讀取啟用的倉庫
+app.get("/api/warehouses", async (req, res) => {
+  try {
+    const result = await db.query(
+      "SELECT * FROM warehouses WHERE is_active = TRUE ORDER BY id ASC"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Get Warehouses Error:", err.stack);
+    res.status(500).json({ message: "伺服器錯誤" });
+  }
 });
 
 /**
@@ -663,6 +649,63 @@ app.get(
       });
     } catch (err) {
       console.error("Get Dashboard Stats Error:", err.stack);
+      res.status(500).json({ message: "伺服器錯誤" });
+    }
+  }
+);
+
+// --- (【全新】) 管理倉庫 API ---
+
+/**
+ * (全新) 獲取所有倉庫 (Admin only)
+ */
+app.get(
+  "/api/admin/warehouses",
+  authenticateToken,
+  isAdmin,
+  async (req, res) => {
+    try {
+      const result = await db.query("SELECT * FROM warehouses ORDER BY id ASC");
+      res.json(result.rows);
+    } catch (err) {
+      console.error("Get Admin Warehouses Error:", err.stack);
+      res.status(500).json({ message: "伺服器錯誤" });
+    }
+  }
+);
+
+/**
+ * (全新) 更新倉庫 (Admin only)
+ */
+app.put(
+  "/api/admin/warehouses/:id",
+  authenticateToken,
+  isAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name, receiver, phone, address, is_active } = req.body;
+
+      // (TODO: 這裡也應該加入 Joi 驗證)
+
+      const result = await db.query(
+        `UPDATE warehouses SET 
+                name = $1, 
+                receiver = $2, 
+                phone = $3, 
+                address = $4,
+                is_active = $5
+             WHERE id = $6
+             RETURNING *`,
+        [name, receiver, phone, address, is_active, id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "找不到倉庫" });
+      }
+      res.json(result.rows[0]);
+    } catch (err) {
+      console.error("Update Warehouse Error:", err.stack);
       res.status(500).json({ message: "伺服器錯誤" });
     }
   }

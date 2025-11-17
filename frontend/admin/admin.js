@@ -1,5 +1,6 @@
 import { API_URL } from "../config.js";
 let availableOperators = [];
+let allWarehouses = []; // (【全新】) 儲存所有倉庫資料
 
 // -------------------------------------------------
 // 1. 核心：認證與守衛
@@ -86,6 +87,17 @@ let statsContent;
 let userSection;
 let createUserForm;
 let usersTbody;
+// (【全新】) 倉庫管理
+let warehousesTbody;
+let warehouseForm;
+let warehouseFormTitle;
+let warehouseIdInput;
+let warehouseNameInput;
+let warehouseReceiverInput;
+let warehousePhoneInput;
+let warehouseAddressInput;
+let warehouseIsActiveInput;
+let cancelWarehouseEditBtn;
 
 // -------------------------------------------------
 // 3. 載入資料 (API 呼叫)
@@ -111,6 +123,7 @@ async function loadAllData() {
     loadOrders(headers),
     loadProducts(), // 載入商品不需要 Token (公開 API)
     loadUsers(headers), // 載入用戶列表
+    loadWarehouses(headers), // (【全新】) 載入倉庫
   ]);
 }
 
@@ -209,6 +222,26 @@ async function loadUsers(headers) {
     console.error("載入用戶失敗:", error);
     usersTbody.innerHTML =
       '<tr><td colspan="5" style="color:red;">載入用戶失敗</td></tr>';
+  }
+}
+
+// (【全新】) 載入倉庫
+async function loadWarehouses(headers) {
+  // 只有 Admin 能載入倉庫
+  const user = getUser();
+  if (user.role !== "admin") {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/admin/warehouses`, { headers });
+    if (!response.ok) throw new Error("無法載入倉庫");
+    allWarehouses = await response.json(); // 存到全域變數
+    renderWarehouses(allWarehouses);
+  } catch (error) {
+    console.error("載入倉庫失敗:", error);
+    warehousesTbody.innerHTML =
+      '<tr><td colspan="5" style="color:red;">載入倉庫失敗</td></tr>';
   }
 }
 
@@ -353,6 +386,34 @@ function renderUsers(users) {
   });
 }
 
+// (【全新】) 渲染倉庫表格
+function renderWarehouses(warehouses) {
+  warehousesTbody.innerHTML = "";
+  if (warehouses.length === 0) {
+    warehousesTbody.innerHTML = '<tr><td colspan="5">沒有倉庫資料。</td></tr>';
+    return;
+  }
+
+  warehouses.forEach((wh) => {
+    const tr = document.createElement("tr");
+    const statusClass = wh.is_active ? "status-active" : "status-inactive";
+    const statusText = wh.is_active ? "已啟用" : "已停用";
+
+    tr.innerHTML = `
+            <td>${wh.id}</td>
+            <td>${wh.name}</td>
+            <td>${wh.address}</td>
+            <td>
+                <span class="${statusClass}">${statusText}</span>
+            </td>
+            <td>
+                <button class="btn btn-edit btn-edit-warehouse" data-id="${wh.id}">編輯</button>
+            </td>
+        `;
+    warehousesTbody.appendChild(tr);
+  });
+}
+
 // -------------------------------------------------
 // 5. 事件監聽 (Event Listeners)
 // -------------------------------------------------
@@ -378,6 +439,17 @@ document.addEventListener("DOMContentLoaded", () => {
   userSection = document.getElementById("users-section");
   createUserForm = document.getElementById("create-user-form");
   usersTbody = document.getElementById("users-tbody");
+  // (【全新】) 抓取倉庫 DOM
+  warehousesTbody = document.getElementById("warehouses-tbody");
+  warehouseForm = document.getElementById("warehouse-form");
+  warehouseFormTitle = document.getElementById("warehouse-form-title");
+  warehouseIdInput = document.getElementById("warehouse-id");
+  warehouseNameInput = document.getElementById("warehouse-name");
+  warehouseReceiverInput = document.getElementById("warehouse-receiver");
+  warehousePhoneInput = document.getElementById("warehouse-phone");
+  warehouseAddressInput = document.getElementById("warehouse-address");
+  warehouseIsActiveInput = document.getElementById("warehouse-is-active");
+  cancelWarehouseEditBtn = document.getElementById("cancel-warehouse-edit-btn");
 
   // 1. 執行守衛
   if (!checkAuth()) {
@@ -634,6 +706,70 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   });
+
+  // (【全新】) 監聽倉庫列表的按鈕事件
+  warehousesTbody.addEventListener("click", (e) => {
+    if (e.target.classList.contains("btn-edit-warehouse")) {
+      const id = e.target.dataset.id;
+      // 從全域變數中尋找該倉庫資料
+      const warehouse = allWarehouses.find((w) => w.id == id);
+      if (warehouse) {
+        // 填入表單
+        warehouseFormTitle.textContent = `編輯倉庫 (ID: ${id})`;
+        warehouseIdInput.value = warehouse.id;
+        warehouseNameInput.value = warehouse.name;
+        warehouseReceiverInput.value = warehouse.receiver;
+        warehousePhoneInput.value = warehouse.phone;
+        warehouseAddressInput.value = warehouse.address;
+        warehouseIsActiveInput.value = warehouse.is_active; // true/false
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
+  });
+
+  // (【全新】) 監聽倉庫表單提交
+  warehouseForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const headers = getAuthHeaders();
+    if (!headers) return;
+
+    const id = warehouseIdInput.value;
+    if (!id) {
+      alert("錯誤：未選中任何倉庫。");
+      return;
+    }
+
+    const warehouseData = {
+      name: warehouseNameInput.value,
+      receiver: warehouseReceiverInput.value,
+      phone: warehousePhoneInput.value,
+      address: warehouseAddressInput.value,
+      is_active: warehouseIsActiveInput.value === "true", // 轉為布林值
+    };
+
+    try {
+      const response = await fetch(`${API_URL}/admin/warehouses/${id}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(warehouseData),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || "更新失敗");
+      }
+
+      alert("倉庫資訊已更新！");
+      resetWarehouseForm();
+      await loadWarehouses(headers); // 重新載入列表
+    } catch (error) {
+      alert(`錯誤: ${error.message}`);
+    }
+  });
+
+  // (【全新】) 倉庫取消按鈕
+  cancelWarehouseEditBtn.addEventListener("click", resetWarehouseForm);
 });
 // (【修正】) 移除所有在 DOMContentLoaded 之外的 addEventListener
 
@@ -647,6 +783,13 @@ function resetProductForm() {
   productForm.reset();
   productIdInput.value = "";
   cancelEditBtn.style.display = "none";
+}
+
+// (【全新】) 重設倉庫表單
+function resetWarehouseForm() {
+  warehouseFormTitle.textContent = "編輯倉庫";
+  warehouseForm.reset();
+  warehouseIdInput.value = "";
 }
 
 // -------------------------------------------------

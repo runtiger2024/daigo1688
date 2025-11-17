@@ -32,6 +32,13 @@
         >商品管理</a
       >
       <a
+        href="#warehouses"
+        class="nav-link"
+        data-target="warehouses-section"
+        data-role="admin"
+        >管理倉庫</a
+      >
+      <a
         href="#users"
         class="nav-link"
         data-target="users-section"
@@ -119,6 +126,64 @@
             </tr>
           </thead>
           <tbody id="products-tbody"></tbody>
+        </table>
+      </section>
+
+      <section
+        class="dashboard-section"
+        id="warehouses-section"
+        data-role="admin"
+      >
+        <h2>管理倉庫</h2>
+        <p>在這裡您可以編輯倉庫資訊，前台會自動顯示「已啟用」的倉庫。</p>
+
+        <form id="warehouse-form" class="subtle-form">
+          <input type="hidden" id="warehouse-id" />
+          <h3 id="warehouse-form-title">編輯倉庫</h3>
+
+          <div class="form-group">
+            <label for="warehouse-name">倉庫名稱:</label>
+            <input type="text" id="warehouse-name" required />
+          </div>
+          <div class="form-group">
+            <label for="warehouse-receiver">收件人:</label>
+            <input type="text" id="warehouse-receiver" required />
+          </div>
+          <div class="form-group">
+            <label for="warehouse-phone">電話:</label>
+            <input type="text" id="warehouse-phone" required />
+          </div>
+          <div class="form-group">
+            <label for="warehouse-address">地址:</label>
+            <textarea id="warehouse-address" rows="3" required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="warehouse-is-active">狀態:</label>
+            <select id="warehouse-is-active">
+              <option value="true">啟用 (顯示在前台)</option>
+              <option value="false">停用 (隱藏)</option>
+            </select>
+          </div>
+          <div class="form-buttons">
+            <button type="submit" id="submit-warehouse-btn">儲存變更</button>
+            <button type="button" id="cancel-warehouse-edit-btn">取消</button>
+          </div>
+        </form>
+
+        <hr />
+
+        <h3>現有倉庫列表</h3>
+        <table id="warehouses-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>名稱</th>
+              <th>地址</th>
+              <th>狀態</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="warehouses-tbody"></tbody>
         </table>
       </section>
 
