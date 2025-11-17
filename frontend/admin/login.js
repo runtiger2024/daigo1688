@@ -2,7 +2,7 @@
  * 這是 /admin/login.html 專用的 JS
  */
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://daigo-backend-service.onrender.com/api";
 
 document.addEventListener("DOMContentLoaded", () => {
   // 檢查是否已登入，如果

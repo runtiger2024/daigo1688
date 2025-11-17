@@ -23,7 +23,7 @@ async function loadComponent(componentPath, placeholderId) {
 // -------------------------------------------------
 // 全域變數
 // -------------------------------------------------
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://daigo-backend-service.onrender.com/api";
 /**
  * 購物車。
  * 結構:
