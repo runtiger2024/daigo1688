@@ -1,22 +1,36 @@
 services:
+  # 這是我們的 Node.js 後端服務
   - type: web
-    name: daigou-backend-service
+    name: daigo-backend-service
     env: node
-    plan: free # 從免費方案開始
+    plan: free
     buildCommand: "npm install"
     startCommand: "npm start"
     envVars:
       - key: NODE_VERSION
-        value: 20 # 確保 Node.js 版本
+        value: 20
       - key: PORT
         value: 5000
+      # --- SendGrid 密鑰 ---
       - key: SENDGRID_API_KEY
-        fromSecret: true # 從 Render 的 Secret Manager 讀取
+        fromSecret: true
       - key: SENDGRID_SENDER_EMAIL
-        fromSecret: true # 你的 SendGrid 寄件人 Email
+        fromSecret: true
       - key: SENDGRID_ADMIN_EMAIL
-        fromSecret: true # 你的管理員 Email
-      - key: SITE_NAME
-        value: "我的代購平台" # 網站名稱
+        fromSecret: true
       - key: ADMIN_SECRET_KEY
-        fromSecret: true # 儀表板的管理員密鑰
+        fromSecret: true
+      - key: SITE_NAME
+        value: "XX 代購平台"
+      # --- 資料庫連線 ---
+      # 關鍵！這會自動使用 "Internal Database URL"
+      - key: DATABASE_URL
+        from:
+          database:
+            name: daigo1688-db
+            property: connectionString
+
+# 這是我們的資料庫 (它只是一個 "宣告"，實際建立是在步驟一)
+databases:
+  - name: daigo1688-db
+    plan: free
