@@ -1,4 +1,4 @@
-import { API_URL } from "./config.js"; // <--- 【優化】從 config 導入
+import { API_URL } from "../config.js"; // <--- 【優化】從 config 導入
 let availableOperators = []; // (--- ←←← 新增這一行)
 
 // -------------------------------------------------
