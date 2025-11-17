@@ -100,11 +100,11 @@ async function setupDatabase() {
         `);
     console.log('Tables "order_items" 已建立。');
 
-    // -- 7. (【全新】) 建立 Warehouses 表格 (倉庫) --
+    // -- 7. (【已修改】) 建立 Warehouses 表格 (倉庫) --
     await client.query(`
             CREATE TABLE IF NOT EXISTS warehouses (
                 id SERIAL PRIMARY KEY,
-                name VARCHAR(100) NOT NULL,
+                name VARCHAR(100) NOT NULL UNIQUE, -- <--- 已加上 UNIQUE
                 receiver VARCHAR(100) NOT NULL,
                 phone VARCHAR(50) NOT NULL,
                 address TEXT NOT NULL,
@@ -112,10 +112,27 @@ async function setupDatabase() {
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
         `);
-    console.log('Tables "warehouses" 已建立。');
+    console.log('Tables "warehouses" 已建立 (並確認 UNIQUE 約束)。');
 
-    // -- 8. (【全新】) 插入預設的倉庫資料 (如果它們不存在) --
-    // 我們使用 "name" 作為唯一鍵來避免重複插入
+    // -- 7.5 (【全新】) 為已經存在的資料表補上 UNIQUE 約束 --
+    // 這能修復您當前的錯誤
+    await client.query(`
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint 
+                    WHERE conrelid = 'warehouses'::regclass 
+                    AND conname = 'warehouses_name_key' -- (PostgreSQL 預設的 UNIQUE 名稱)
+                ) THEN
+                    ALTER TABLE warehouses ADD CONSTRAINT warehouses_name_key UNIQUE (name);
+                    RAISE NOTICE '已為 "warehouses" 表的 "name" 欄位加上 UNIQUE 約束。';
+                END IF;
+            END$$;
+        `);
+    console.log("Warehouse UNIQUE 約束已修復。");
+
+    // -- 8. (【不變】) 插入預設的倉庫資料 --
+    // 現在 ON CONFLICT (name) 會正常運作
     await client.query(`
             INSERT INTO warehouses (name, receiver, phone, address)
             VALUES 
