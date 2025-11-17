@@ -1,0 +1,65 @@
+# 這是 daigo1688 專案的 Render 藍圖
+# 它定義了後端服務和前端靜態網站
+
+databases:
+  - name: daigo1688-db # 宣告我們已存在的資料庫
+    plan: free
+
+services:
+  # --------------------
+  # 服務 1: 後端 (Web Service)
+  # --------------------
+  - type: web
+    name: daigo-backend-service
+    env: node
+    plan: free
+    # Monorepo 設定: 告訴 Render 程式碼在 'backend' 資料夾
+    rootDir: backend
+
+    # 建置與啟動指令
+    buildCommand: "npm install"
+    startCommand: "npm start"
+
+    # 環境變數 (密鑰)
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: PORT
+        value: 5000 # Render 會自動映射 10000 埠
+
+      # (關鍵) 自動從 daigo1688-db 獲取 "Internal" URL
+      - key: DATABASE_URL
+        from:
+          database:
+            name: daigo1688-db
+            property: connectionString
+
+      # (關鍵) 這些是我們需要手動填寫的密鑰
+      - key: JWT_SECRET
+        fromSecret: true
+      - key: ADMIN_SECRET_KEY
+        fromSecret: true
+      - key: SENDGRID_API_KEY
+        fromSecret: true
+      - key: SENDGRID_SENDER_EMAIL
+        fromSecret: true
+      - key: SENDGRID_ADMIN_EMAIL
+        fromSecret: true
+      - key: SITE_NAME
+        value: "跑得快代購平台"
+
+  # --------------------
+  # 服務 2: 前端 (Static Site)
+  # --------------------
+  - type: static
+    name: daigo-frontend
+    plan: free
+    # Monorepo 設定: 告訴 Render 程式碼在 'frontend' 資料夾
+    rootDir: frontend
+
+    # 路由規則: 讓所有 "找不到" 的頁面都導回 index.html
+    # 這在未來如果你使用 React/Vue 時很重要
+    routes:
+      - type: rewrite
+        source: "/*"
+        destination: "/index.html"
