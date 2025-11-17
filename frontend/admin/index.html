@@ -17,6 +17,28 @@
       </div>
     </header>
 
+    <nav class="admin-nav">
+      <a
+        href="#stats"
+        class="nav-link"
+        data-target="stats-section"
+        data-default="true"
+        >績效一覽表</a
+      >
+      <a href="#orders" class="nav-link" data-target="orders-section"
+        >訂單管理</a
+      >
+      <a href="#products" class="nav-link" data-target="products-section"
+        >商品管理</a
+      >
+      <a
+        href="#users"
+        class="nav-link"
+        data-target="users-section"
+        data-role="admin"
+        >人員管理</a
+      >
+    </nav>
     <main class="dashboard-layout">
       <section class="dashboard-section" id="stats-section">
         <h2>績效一覽表</h2>
@@ -99,7 +121,8 @@
           <tbody id="products-tbody"></tbody>
         </table>
       </section>
-      <section class="dashboard-section" id="users-section">
+
+      <section class="dashboard-section" id="users-section" data-role="admin">
         <h2>人員管理 (僅限 Admin)</h2>
 
         <form id="create-user-form">

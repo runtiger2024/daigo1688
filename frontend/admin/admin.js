@@ -1,4 +1,4 @@
-import { API_URL } from "../config.js"; // <--- 【優化】從 config 導入
+import { API_URL } from "../config.js"; // <--- 【已修正】從 ../ config 導入
 let availableOperators = []; // (--- ←←← 新增這一行)
 
 // -------------------------------------------------
@@ -83,7 +83,7 @@ const cancelEditBtn = document.getElementById("cancel-edit-btn");
 // 績效
 const statsContent = document.getElementById("stats-content");
 // 人員管理
-const userSection = document.getElementById("users-section");
+const userSection = document.getElementById("users-section"); // (重構) 雖然被隱藏，但 JS 仍需保留
 const createUserForm = document.getElementById("create-user-form");
 const usersTbody = document.getElementById("users-tbody");
 
@@ -165,7 +165,7 @@ async function loadOrders(headers) {
 
     const orders = await response.json();
     renderOrders(orders);
-  } catch (error) {
+  } catch (error)
     alert(`載入訂單失敗: ${error.message}`);
     ordersTbody.innerHTML =
       '<tr><td colspan="6" style="color: red;">載入訂單失敗。</td></tr>';
@@ -186,13 +186,12 @@ async function loadProducts() {
   }
 }
 
-// (全新) 載入用戶
+// (重構) 載入用戶
 async function loadUsers(headers) {
-  // 只有 Admin 能看到用戶區塊
+  // 只有 Admin 能載入用戶
   const user = getUser();
   if (user.role !== "admin") {
-    userSection.style.display = "none"; // 隱藏整個區塊
-    return;
+    return; // 直接返回，權限控制由 applyRolePermissions 處理
   }
 
   try {
@@ -267,7 +266,7 @@ function renderOrders(orders) {
                     }>取消訂單</option>
                 </select>
 
-                <select class="order-operator-select" data-id="${order.id}">
+                <select class="order-operator-select" data-id="${order.id}" data-role="admin">
                     <option value="">-- 指派給 --</option>
                     ${operatorOptions}
                 </select>
@@ -279,6 +278,14 @@ function renderOrders(orders) {
       const operatorSelect = tr.querySelector(".order-operator-select");
       // 我們在 <select> 標籤後設定 .value 比較安全
       operatorSelect.value = order.operator_id;
+    }
+
+    // 4. (全新) 如果不是 Admin，隱藏指派選單
+    if (getUser().role !== "admin") {
+      const operatorSelect = tr.querySelector(".order-operator-select");
+      if (operatorSelect) {
+        operatorSelect.style.display = "none";
+      }
     }
 
     ordersTbody.appendChild(tr);
@@ -345,25 +352,30 @@ function renderUsers(users) {
 // 5. 事件監聽 (Event Listeners)
 // -------------------------------------------------
 
-// 頁面載入時
+// (重構) 頁面載入時
 document.addEventListener("DOMContentLoaded", () => {
-  // 執行守衛
+  // 1. 執行守衛
   if (!checkAuth()) {
-    return; // 如果未登入，停止執行
+    return;
   }
 
-  // 載入所有資料
+  // 2. (全新) 立即套用權限，隱藏不該看的按鈕和區塊
+  applyRolePermissions(); 
+
+  // 3. 載入所有資料 (loadUsers 會因為權限而自動跳過)
   loadAllData();
 
-  // 綁定登出按鈕
+  // 4. 綁定按鈕
   logoutButton.addEventListener("click", logout);
-
-  // 綁定刷新按鈕
   refreshButton.addEventListener("click", () => {
     loadOrders(getAuthHeaders());
     loadStats(getAuthHeaders());
   });
+
+  // 5. 啟動導覽列 (它會自動跳過被隱藏的頁籤)
+  setupNavigation();
 });
+
 
 // 處理商品表單提交 (新增 vs. 編輯)
 productForm.addEventListener("submit", async (e) => {
@@ -462,7 +474,11 @@ productsTbody.addEventListener("click", async (e) => {
       productImgUrlInput.value = product.image_url;
 
       cancelEditBtn.style.display = "inline-block";
-      window.scrollTo({ top: 0, behavior: "smooth" }); // 滾動到頂部
+      
+      // (重構) 自動切換到商品頁籤並滾動
+      document.querySelector('.nav-link[data-target="products-section"]').click();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+
     } catch (error) {
       alert(`錯誤: ${error.message}`);
     }
@@ -602,4 +618,82 @@ function resetProductForm() {
   productForm.reset();
   productIdInput.value = "";
   cancelEditBtn.style.display = "none";
+}
+
+// -------------------------------------------------
+// 7. (全新) 權限控制函式
+// -------------------------------------------------
+/**
+ * 根據用戶角色，自動隱藏需要特定權限的元素
+ * (讀取 data-role="admin" 屬性)
+ */
+function applyRolePermissions() {
+  const user = getUser();
+  if (user.role === "admin") {
+    return; // Admin 可以看到所有東西
+  }
+
+  // 尋找所有標記為 "admin" 才能看的元素
+  const restrictedElements = document.querySelectorAll('[data-role="admin"]');
+  
+  restrictedElements.forEach((el) => {
+    el.style.display = "none";
+  });
+}
+
+// -------------------------------------------------
+// 8. (重構) 導覽列頁籤邏輯
+// -------------------------------------------------
+function setupNavigation() {
+  const navLinks = document.querySelectorAll(".nav-link");
+  const sections = document.querySelectorAll(".dashboard-section");
+
+  // 1. 尋找預設頁籤 (從 data-default="true" 或第一個可見的頁籤)
+  const defaultLink = 
+    document.querySelector('.nav-link[data-default="true"]') || 
+    document.querySelector('.nav-link:not([style*="display: none"])');
+  
+  const defaultTargetId = defaultLink ? defaultLink.dataset.target : null;
+
+  // 2. 根據 URL hash 顯示正確頁面
+  function showTabFromHash() {
+    const hash = window.location.hash.substring(1);
+    let targetId = hash ? `${hash}-section` : defaultTargetId;
+
+    // 檢查目標是否存在且可見
+    const targetSection = document.getElementById(targetId);
+    if (!targetSection || targetSection.style.display === "none") {
+      targetId = defaultTargetId; // 不存在或被隱藏，則退回預設
+    }
+    
+    updateActiveTabs(targetId);
+  }
+
+  // 3. 更新 active 狀態的 helper
+  function updateActiveTabs(targetId) {
+    sections.forEach((section) => {
+      section.classList.toggle("active", section.id === targetId);
+    });
+    navLinks.forEach((link) => {
+      link.classList.toggle("active", link.dataset.target === targetId);
+    });
+  }
+
+  // 4. 綁定點擊事件
+  navLinks.forEach((link) => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      const targetId = link.dataset.target;
+      if (document.getElementById(targetId).style.display !== "none") {
+        updateActiveTabs(targetId);
+        history.pushState(null, null, `#${targetId.replace("-section", "")}`);
+      }
+    });
+  });
+
+  // 5. 監聽瀏覽器 "上一頁/下一頁"
+  window.addEventListener("popstate", showTabFromHash);
+  
+  // 6. 初始載入
+  showTabFromHash();
 }
