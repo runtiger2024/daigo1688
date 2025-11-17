@@ -8,7 +8,6 @@
   </head>
   <body>
     <div id="header-placeholder"></div>
-    <!-- 購物車圖示 (懸浮) -->
     <div class="cart-button-container" id="cart-button">
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -29,6 +28,8 @@
     </div>
 
     <main>
+      <div id="customer-info" style="text-align: right"></div>
+
       <h1>我們的商品</h1>
       <div id="product-list" class="product-grid">
         <p>正在載入商品...</p>
@@ -36,26 +37,21 @@
 
       <hr />
     </main>
-    <!-- ========== 購物車彈窗 (Modal) 開始 ========== -->
     <div class="modal" id="cart-modal">
       <div class="modal-content">
         <span class="close-button" id="close-modal">&times;</span>
         <h2>您的購物車</h2>
 
-        <!-- 1. 購物車商品列表 -->
         <div id="cart-items-list">
-          <!-- 購物車內容將由 app.js 動態載入 -->
           <p>您的購物車是空的。</p>
         </div>
 
-        <!-- 2. 總金額 -->
         <div class="cart-total">
           <strong>總金額: TWD <span id="cart-total-amount">0</span></strong>
         </div>
 
         <hr />
 
-        <!-- 3. 結帳表單 -->
         <h3>結帳資訊</h3>
         <form id="checkout-form">
           <div class="form-group">
@@ -82,10 +78,12 @@
         </form>
       </div>
     </div>
-    <!-- ========== 購物車彈窗 (Modal) 結束 ========== -->
-
     <footer class="site-footer">
       <div class="footer-content">
+        <p>
+          <a href="login.html">會員登入</a> |
+          <a href="register.html">會員註冊</a>
+        </p>
         <p>
           <strong>跑得快國際貿易有限公司</strong><br />
           Runtiger International Trading Co., Ltd.
